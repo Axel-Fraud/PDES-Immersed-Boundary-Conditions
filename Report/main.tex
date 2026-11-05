@@ -1,0 +1,721 @@
+\documentclass[11pt]{article}
+
+% ============================================================
+% PACKAGES
+% ============================================================
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{microtype}
+
+% ============================================================
+% FORMATTING
+% ============================================================
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue
+}
+
+\graphicspath{{./}}
+
+% ============================================================
+% DOCUMENT
+% ============================================================
+
+\begin{document}
+
+\begin{center}
+    {\LARGE \textbf{MA550: Homework 2}}\\[8pt]
+    {\large Finite Differences and Immersed Boundary Methods}\\[10pt]
+    Axel Fraud\\
+    Colorado School of Mines\\
+    October 2026
+\end{center}
+
+\vspace{0.5cm}
+
+% ============================================================
+% PROBLEM 1
+% ============================================================
+
+\section*{Problem 1: Finite-Difference Solution of the Poisson Equation}
+
+\subsection*{Numerical Method}
+
+We consider the two-dimensional Poisson equation
+
+\begin{equation}
+    \nabla^2 u(x,y)=f(x,y)
+\end{equation}
+
+on the square domain
+
+\[
+    \Omega=[0,2\pi]\times[0,2\pi].
+\]
+
+The Laplacian is approximated using the standard five-point
+finite-difference stencil,
+
+\begin{equation}
+    \nabla^2 u(x_i,y_j)
+    \approx
+    \frac{
+    u_{i+1,j}+u_{i-1,j}
+    +u_{i,j+1}+u_{i,j-1}
+    -4u_{i,j}
+    }{\Delta x^2}.
+\end{equation}
+
+This approximation is second-order accurate in the grid spacing,
+
+\[
+    \nabla_h^2 u
+    =
+    \nabla^2u+\mathcal{O}(\Delta x^2).
+\]
+
+The resulting sparse linear system is written as
+
+\begin{equation}
+    A\mathbf{u}=\mathbf{f},
+\end{equation}
+
+where $A$ represents the discrete Laplacian.
+
+\subsection*{Numerical Solution}
+
+The numerical solution exhibits the expected oscillatory
+structure of the prescribed solution.
+
+Figure~\ref{fig:p1_solution} shows both the three-dimensional
+surface and its two-dimensional representation.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}{0.75\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{P1_3D.png}
+        \caption{Three-dimensional numerical solution.}
+    \end{subfigure}
+
+    \vspace{0.3cm}
+
+    \begin{subfigure}{0.65\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{P1_2D.png}
+        \caption{Two-dimensional contour representation.}
+    \end{subfigure}
+
+    \caption{Finite-difference solution of the Poisson equation.}
+    \label{fig:p1_solution}
+\end{figure}
+
+\subsection*{Convergence Analysis}
+
+To evaluate numerical accuracy, the relative errors are
+computed using the discrete $L_\infty$ and $L_2$ norms,
+
+\begin{equation}
+    E_\infty
+    =
+    \frac{
+    \|u_h-u_{\mathrm{exact}}\|_\infty
+    }{
+    \|u_{\mathrm{exact}}\|_\infty
+    },
+\end{equation}
+
+and
+
+\begin{equation}
+    E_2
+    =
+    \frac{
+    \|u_h-u_{\mathrm{exact}}\|_2
+    }{
+    \|u_{\mathrm{exact}}\|_2
+    }.
+\end{equation}
+
+The convergence results are shown in
+Figure~\ref{fig:p1_convergence}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{P1_Convergence.png}
+    \caption{
+    Relative numerical errors as functions of grid spacing.
+    The dashed reference line represents second-order
+    convergence, $\mathcal{O}(\Delta x^2)$.
+    }
+    \label{fig:p1_convergence}
+\end{figure}
+
+Both error norms closely follow the second-order reference
+line. This confirms that the implementation achieves the
+expected convergence behavior of the five-point
+finite-difference approximation.
+
+% ============================================================
+% PROBLEM 2
+% ============================================================
+
+\newpage
+
+\section*{Problem 2: Poisson Equation with an Immersed Boundary}
+
+\subsection*{Mathematical Formulation}
+
+We extend the finite-difference Poisson solver by introducing
+an immersed boundary inside the computational domain.
+
+The governing equation becomes
+
+\begin{equation}
+    \nabla^2u=f+S^{ib}(q),
+\end{equation}
+
+where $S^{ib}$ is the immersed-boundary spreading operator
+and $q$ represents the unknown boundary forcing.
+
+The immersed-boundary constraint is imposed through the
+interpolation operator,
+
+\begin{equation}
+    J^{ib}(u)=g.
+\end{equation}
+
+The immersed boundary is parameterized by
+
+\begin{align}
+    x^{ib}(\theta)&=\pi+\cos\theta,\\
+    y^{ib}(\theta)&=\pi+\sin\theta,
+\end{align}
+
+where $\theta\in[0,2\pi]$.
+
+\subsection*{Spreading and Interpolation}
+
+The spreading operator transfers forces defined on the
+immersed boundary to the Cartesian grid.
+
+In continuous form,
+
+\begin{equation}
+    S^{ib}(q)(x,y)
+    =
+    \int_{\Gamma}
+    q(s)\,
+    \delta_a(x-X(s))
+    \delta_a(y-Y(s))
+    \,ds.
+\end{equation}
+
+The interpolation operator evaluates the Cartesian solution
+at the immersed-boundary points,
+
+\begin{equation}
+    J^{ib}(u)(s)
+    =
+    \int_\Omega
+    u(x,y)
+    \delta_a(x-X(s))
+    \delta_a(y-Y(s))
+    \,dx\,dy.
+\end{equation}
+
+Here, $\delta_a$ denotes a regularized delta function.
+
+After discretization, the coupled problem can be expressed as
+
+\begin{equation}
+    \begin{bmatrix}
+        A & -S\\
+        J & 0
+    \end{bmatrix}
+    \begin{bmatrix}
+        \mathbf{u}\\
+        \mathbf{q}
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+        \mathbf{f}\\
+        \mathbf{g}
+    \end{bmatrix}.
+\end{equation}
+
+\subsection*{Numerical Solution}
+
+Figure~\ref{fig:p2_solution} illustrates the numerical
+solution with the immersed boundary superimposed.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}{0.70\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{P2_3D.png}
+        \caption{Three-dimensional solution.}
+    \end{subfigure}
+
+    \vspace{0.3cm}
+
+    \begin{subfigure}{0.55\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{P2_2D.png}
+        \caption{Two-dimensional solution with immersed boundary.}
+    \end{subfigure}
+
+    \caption{
+    Numerical solution of the Poisson equation
+    with an immersed boundary.
+    }
+    \label{fig:p2_solution}
+\end{figure}
+
+\subsection*{Grid Convergence}
+
+The convergence study is shown in
+Figure~\ref{fig:p2_convergence}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{P2_Convergence.png}
+    \caption{
+    Relative errors for the immersed-boundary Poisson solver.
+    The dashed line indicates second-order convergence.
+    }
+    \label{fig:p2_convergence}
+\end{figure}
+
+The numerical errors decrease as the Cartesian grid is
+refined. The $L_\infty$ error closely follows the
+second-order reference line, while the $L_2$ error also
+decreases consistently.
+
+\subsection*{Effect of Immersed-Boundary Spacing}
+
+The spacing between immersed-boundary points influences
+both numerical accuracy and computational cost.
+
+Figures~\ref{fig:p2_spacing_accuracy} and
+\ref{fig:p2_spacing_runtime} illustrate these effects.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{P2_Spacing_Accuracy.png}
+    \caption{
+    Relative error as a function of immersed-boundary
+    spacing normalized by Cartesian grid spacing.
+    }
+    \label{fig:p2_spacing_accuracy}
+\end{figure}
+
+The errors are largest when the immersed-boundary points
+are spaced substantially closer than the Cartesian grid
+spacing. Increasing the spacing initially produces a
+significant improvement, after which the errors
+approximately stabilize.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{P2_Spacing_Runtime.png}
+    \caption{
+    Computational runtime as a function of
+    immersed-boundary spacing.
+    }
+    \label{fig:p2_spacing_runtime}
+\end{figure}
+
+The computational cost decreases considerably as the
+immersed-boundary spacing increases.
+
+These results illustrate the trade-off between
+immersed-boundary resolution and computational efficiency.
+For this experiment, spacing comparable to the Cartesian
+grid spacing provides a reasonable balance.
+
+% ============================================================
+% PROBLEM 3
+% ============================================================
+
+\section*{Problem 3: An Almost Minimal Surface}
+
+\subsection*{Problem Formulation}
+
+We now consider the homogeneous Poisson equation
+
+\begin{equation}
+    \nabla^2u=S^{ib}(q),
+\end{equation}
+
+with homogeneous Dirichlet conditions on the outer boundary,
+
+\begin{equation}
+    u(0,y)=u(2\pi,y)=u(x,0)=u(x,2\pi)=0.
+\end{equation}
+
+The immersed boundary is parameterized by
+
+\begin{align}
+    x^{ib}(\theta)&=\pi+\cos\theta,\\
+    y^{ib}(\theta)&=\pi+\sin\theta,
+\end{align}
+
+and the prescribed values are
+
+\begin{equation}
+    u(x^{ib},y^{ib})
+    =
+    \cos(2x^{ib})\sin(2y^{ib}).
+\end{equation}
+
+Unlike the previous problem, the forcing term is zero
+throughout the domain except for the contribution from
+the immersed boundary.
+
+The resulting solution is therefore determined by the
+prescribed values along the circular boundary and the
+homogeneous conditions on the outer boundary.
+
+\subsection*{Numerical Results}
+
+The computed solution is shown in
+Figure~\ref{fig:p3_solution}.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}{0.75\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{P3_3D.png}
+        \caption{Three-dimensional almost minimal surface.}
+    \end{subfigure}
+
+    \vspace{0.3cm}
+
+    \begin{subfigure}{0.65\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{P3_2D.png}
+        \caption{Two-dimensional contour representation.}
+    \end{subfigure}
+
+    \caption{
+    Numerical solution of the homogeneous Poisson equation
+    with prescribed immersed-boundary values.
+    }
+    \label{fig:p3_solution}
+\end{figure}
+
+The surface exhibits positive and negative deformations
+near the immersed boundary, corresponding to the
+oscillatory prescribed boundary values.
+
+Away from the immersed boundary, the solution gradually
+approaches zero as required by the homogeneous
+outer Dirichlet conditions.
+
+The resulting surface resembles a minimal surface in
+the sense that it smoothly connects the prescribed
+boundary values. However, it is not a true minimal
+surface because the governing equation is linear,
+whereas the minimal-surface equation is nonlinear.
+
+% ============================================================
+% PROBLEM 4: CHARLIE'S RULE
+% ============================================================
+
+\section*{Problem 4: Charlie's Rule}
+
+For this problem, I explored several extensions of the immersed
+boundary method developed in Problem 3. In particular, I investigated
+how multiple moving immersed boundaries influence the numerical
+solution and whether reusing previous solutions as initial guesses
+could improve the efficiency of GMRES.
+
+The goal was to extend the original static immersed boundary
+problem into a pseudo-dynamic simulation while examining both
+the resulting surface geometries and computational performance.
+
+% ------------------------------------------------------------
+% MOVING IMMERSED BOUNDARIES
+% ------------------------------------------------------------
+
+\subsection*{Moving Immersed Boundaries}
+
+Rather than considering a single stationary immersed boundary,
+I introduced two immersed boundaries whose positions and geometries
+vary throughout the simulation.
+
+The first boundary is an ellipse that undergoes rotation,
+while the second is a circle that undergoes periodic deformation.
+
+At each frame, the immersed boundary locations are updated,
+and the corresponding numerical solution is recomputed.
+
+This produces a pseudo-dynamic simulation in which the geometry
+changes over time, but the governing elliptic problem is solved
+independently at each configuration.
+
+Mathematically, the numerical solution at frame $k$ satisfies
+
+\begin{equation}
+    \mathcal{L}_h u^{(k)}
+    +
+    \mathcal{S}^{(k)} F^{(k)}
+    =
+    f,
+\end{equation}
+
+where $\mathcal{L}_h$ is the discrete Laplacian,
+$\mathcal{S}^{(k)}$ is the spreading operator associated
+with the immersed boundary geometry at frame $k$, and
+$F^{(k)}$ represents the immersed boundary forces.
+
+The dependence on $k$ reflects the changing geometry
+of the immersed boundaries.
+
+% ------------------------------------------------------------
+% 2D VISUALIZATION
+% ------------------------------------------------------------
+
+\subsection*{Two-Dimensional Visualization}
+
+Figure~\ref{fig:p4_2d} shows two representative frames
+from the two-dimensional simulation.
+
+The black curves represent the immersed boundaries,
+while the background contour plot illustrates the
+numerical solution $u(x,y)$.
+
+As the boundaries move and deform, the surrounding
+solution changes accordingly.
+
+In particular, the interaction between the two
+immersed boundaries produces increasingly complex
+spatial structures that would not appear in the
+single-boundary configuration.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{P4-2D-F1.png}
+        \caption{Initial configuration.}
+        \label{fig:p4_2d_f1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{P4-2D-F2.png}
+        \caption{Later configuration.}
+        \label{fig:p4_2d_f2}
+    \end{subfigure}
+
+    \caption{
+    Two-dimensional snapshots of the moving immersed
+    boundary simulation. The ellipse rotates while
+    the circular boundary deforms, producing changes
+    in the numerical solution.
+    }
+    \label{fig:p4_2d}
+\end{figure}
+
+% ------------------------------------------------------------
+% 3D VISUALIZATION
+% ------------------------------------------------------------
+
+\subsection*{Three-Dimensional Surface Deformation}
+
+To better visualize the influence of the immersed
+boundaries, I also generated three-dimensional
+representations of the numerical solution.
+
+Figure~\ref{fig:p4_3d} shows two representative
+frames from the resulting animation.
+
+The surface height corresponds to the numerical
+solution $u(x,y)$, while the black curves indicate
+the immersed boundaries embedded within the surface.
+
+As the boundaries evolve, the resulting surface
+develops changing peaks, valleys, and localized
+deformations.
+
+These visualizations demonstrate how relatively
+simple geometric motions can generate complicated
+surface structures through the immersed boundary method.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{P4-3D-F1.png}
+        \caption{First surface configuration.}
+        \label{fig:p4_3d_f1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{P4-3D-F2.png}
+        \caption{Later surface configuration.}
+        \label{fig:p4_3d_f2}
+    \end{subfigure}
+
+    \caption{
+    Three-dimensional snapshots illustrating the
+    deformation of the numerical solution as the
+    immersed boundaries move. The changing boundary
+    configurations produce different localized
+    surface features.
+    }
+    \label{fig:p4_3d}
+\end{figure}
+
+% ------------------------------------------------------------
+% GMRES PERFORMANCE
+% ------------------------------------------------------------
+
+\subsection*{GMRES Performance: Warm versus Cold Starts}
+
+An additional experiment investigated whether
+reusing the solution from the previous frame
+could improve the convergence of GMRES.
+
+In the original implementation, GMRES begins
+with a zero initial guess,
+
+\begin{equation}
+    u_0^{(k)} = 0.
+\end{equation}
+
+This is referred to as a \textit{cold start}.
+
+However, because the immersed boundaries move
+continuously between frames, the numerical
+solutions at consecutive frames are expected
+to be similar.
+
+This suggests using the previous solution
+as the initial guess for the next solve,
+
+\begin{equation}
+    u_0^{(k)} = u^{(k-1)},
+\end{equation}
+
+which is referred to as a \textit{warm start}.
+
+The motivation is that if
+
+\begin{equation}
+    \left\|
+    u^{(k)} - u^{(k-1)}
+    \right\|
+    \ll
+    \left\|u^{(k)}\right\|,
+\end{equation}
+
+then the previous solution should provide
+a better approximation to the new solution
+than the zero vector.
+
+In principle, this could reduce the number
+of Krylov iterations required for convergence.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\textwidth]
+    {P4_GMRES_Performance.png}
+
+    \caption{
+    Comparison of GMRES performance using cold
+    and warm starts over successive animation
+    frames. The upper panel shows the number
+    of GMRES iterations required for convergence,
+    while the lower panel compares the corresponding
+    solution times.
+    }
+    \label{fig:p4_gmres}
+\end{figure}
+
+\subsection*{Discussion of GMRES Results}
+
+Interestingly, the numerical results indicate
+that warm-starting GMRES does not provide a
+significant computational advantage for this
+particular experiment.
+
+As shown in Figure~\ref{fig:p4_gmres},
+both methods require approximately 50--54
+iterations across the simulation.
+
+Furthermore, the solution times remain
+comparable, with the warm-start approach
+occasionally requiring slightly more time
+than the cold-start approach.
+
+Although the previous solution provides
+a physically reasonable initial guess,
+this does not necessarily guarantee faster
+convergence of the Krylov subspace method.
+
+GMRES convergence depends on several factors,
+including the structure of the linear system,
+the initial residual, and the spectral
+properties of the operator.
+
+Consequently, a better initial approximation
+does not always produce a substantial reduction
+in the number of iterations.
+
+These results suggest that for this particular
+system, improving the preconditioning strategy
+may be more effective than simply reusing
+the previous solution.
+
+% ------------------------------------------------------------
+% CONCLUSION
+% ------------------------------------------------------------
+
+\subsection*{Conclusion}
+
+This experiment demonstrates how the immersed
+boundary method can be extended beyond a
+single stationary boundary to simulate
+multiple moving and deforming geometries.
+
+The resulting two-dimensional and
+three-dimensional visualizations illustrate
+how changes in boundary geometry influence
+the numerical solution.
+
+Additionally, the GMRES comparison provides
+an interesting computational observation:
+although warm-starting is a natural strategy
+for a sequence of related linear systems,
+it does not necessarily improve convergence
+or computational efficiency.
+
+Overall, these experiments highlight both
+the flexibility of the immersed boundary
+method and the importance of testing
+numerical optimization strategies rather
+than assuming they will improve performance.
+
+\end{document}
